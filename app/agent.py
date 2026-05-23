@@ -1,3 +1,4 @@
+from app.langgraph_agent import graph
 from app.state import AgentState, RunRequest
 from app.tools.clickhouse import store_run
 from app.tools.cluster import cluster_issues
@@ -6,6 +7,44 @@ from app.tracing import run_traced
 
 
 async def run_agent(request: RunRequest) -> AgentState:
+    return await run_langgraph_agent(request)
+
+
+async def run_langgraph_agent(request: RunRequest) -> AgentState:
+    state = AgentState(repo=request.repo, dry_run=request.dry_run)
+    result = await graph.ainvoke(
+        {
+            "run_id": state.run_id,
+            "repo": request.repo,
+            "limit": request.limit,
+            "dry_run": request.dry_run,
+            "issues": [],
+            "clusters": [],
+            "errors": [],
+            "researched": False,
+            "analyzed": False,
+            "stored": False,
+        },
+        config={
+            "metadata": {
+                "run_id": state.run_id,
+                "repo": request.repo,
+                "dry_run": request.dry_run,
+            },
+            "tags": ["docs-gap-agent", request.repo],
+        },
+    )
+    return AgentState(
+        run_id=state.run_id,
+        repo=request.repo,
+        dry_run=request.dry_run,
+        issues=result.get("issues", []),
+        clusters=result.get("clusters", []),
+        errors=result.get("errors", []),
+    )
+
+
+async def run_deterministic_agent(request: RunRequest) -> AgentState:
     state = AgentState(repo=request.repo, dry_run=request.dry_run)
 
     while True:

@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     senso_api_key: str | None = None
     nimble_api_key: str | None = None
 
+    langsmith_tracing: bool = True
+    langsmith_api_key: str | None = None
+    langsmith_project: str = "docs-gap-agent"
+    langsmith_endpoint: str | None = None
+
 
 @lru_cache
 def get_settings() -> Settings:

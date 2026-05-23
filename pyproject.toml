@@ -1,0 +1,9 @@
+[project]
+name = "docs-gap-agent"
+version = "0.1.0"
+description = "Autonomous docs gap agent for GitHub issues"
+requires-python = ">=3.11"
+dependencies = []
+
+[tool.setuptools.packages.find]
+include = ["app*"]
