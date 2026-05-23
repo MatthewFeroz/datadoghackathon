@@ -1,0 +1,13 @@
+.env
+.env.*
+!.env.example
+clickhouse_credentials.txt
+.venv/
+__pycache__/
+*.py[cod]
+.DS_Store
+.pytest_cache/
+.ruff_cache/
+.agents/
+.claude/
+.cursor/
