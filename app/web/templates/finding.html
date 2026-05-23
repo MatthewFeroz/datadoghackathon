@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ cluster.name }} · Git Shell</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+{% include "_partials/favicon.html" %}
+<link rel="stylesheet" href="/static/style.css">
+<script src="https://unpkg.com/htmx.org@1.9.12"></script>
+</head>
+<body>
+  <header class="topbar">
+    {% with brand_suffix="Finding", brand_tagline=repo ~ " · GitHub-backed gap · publish a Senso doc" %}
+      {% include "_partials/brand.html" %}
+    {% endwith %}
+    <nav class="topnav">
+      <a class="published-link" href="/findings">Browse findings</a>
+      <a class="published-link" href="/monetization">Monetization</a>
+      <a class="published-link" href="/">Run agent →</a>
+    </nav>
+  </header>
+
+  <main class="finding-page">
+    <article class="finding-card sev-{{ cluster.severity }}">
+      <div class="finding-kicker">
+        <span class="sev-pill sev-{{ cluster.severity }}">{{ cluster.severity|upper }}</span>
+        <span>{{ source_issues|length }} source issues</span>
+        <span>confidence {{ '%.0f'|format(cluster.confidence * 100) }}%</span>
+      </div>
+
+      <h2>{{ cluster.name }}</h2>
+      <p class="finding-question">{{ cluster.recurring_question }}</p>
+      <p class="finding-summary">{{ cluster.summary }}</p>
+
+      <section class="workflow-strip" aria-label="Finding workflow">
+        <div class="workflow-step active">
+          <span>1</span>
+          <strong>Review traced product issues</strong>
+        </div>
+        <div class="workflow-step {% if cluster.review_status in ['approved', 'published'] %}active{% endif %}">
+          <span>2</span>
+          <strong>Approve Senso doc</strong>
+        </div>
+        <div class="workflow-step {% if cluster.published_url %}active{% endif %}">
+          <span>3</span>
+          <strong>Publish to portal</strong>
+        </div>
+      </section>
+
+      <div id="finding-actions">
+        {% include "_partials/finding_actions.html" %}
+      </div>
+
+      <section class="review-box finding-section">
+        <div class="review-label">Generated fix preview</div>
+        <h3>{{ cluster.draft_title or cluster.name }}</h3>
+        <p>{{ cluster.draft_summary or cluster.summary }}</p>
+        <details open>
+          <summary>Review generated markdown</summary>
+          <pre>{{ cluster.draft_markdown or cluster.summary }}</pre>
+        </details>
+      </section>
+
+      <section class="finding-section">
+        <div class="review-label">Step 1</div>
+        <h3>Review traced product issues</h3>
+        {% if source_issues %}
+        <ul class="source-list">
+          {% for issue in source_issues %}
+          <li>
+            <a href="{{ issue.url }}" target="_blank" rel="noopener">#{{ issue.number }} {{ issue.title }}</a>
+            <span>{{ issue.state }} · {{ issue.comments_count }} comments</span>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="finding-summary">No source issue details are available for this finding.</p>
+        {% endif %}
+      </section>
+    </article>
+  </main>
+
+  {% include "_partials/built_with.html" %}
+</body>
+</html>

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Findings · Git Shell</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+{% include "_partials/favicon.html" %}
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    {% with brand_suffix="Findings", brand_tagline="Open documentation gaps companies can inspect, trace, and publish." %}
+      {% include "_partials/brand.html" %}
+    {% endwith %}
+    <nav class="topnav">
+      <a class="published-link" href="/monetization">Monetization</a>
+      <a class="published-link" href="/">Run agent →</a>
+    </nav>
+  </header>
+
+  <main class="marketplace-page">
+    <section class="marketplace-hero">
+      <div>
+        <div class="review-label">Company view</div>
+        <h2>Find the docs issues users are already asking about</h2>
+        <p>Each card is a concrete GitHub-backed documentation gap. Companies review traced product issues, approve an agent-authored Senso doc, and publish it to their portal.</p>
+      </div>
+      <div class="marketplace-stat">
+        <strong>{{ finding_count }}</strong>
+        <span>findings available</span>
+      </div>
+    </section>
+
+    {% if findings %}
+    <section class="marketplace-grid">
+      {% for finding in findings %}
+      {% set cluster = finding.cluster %}
+      <article class="marketplace-card sev-{{ cluster.severity }}">
+        <div class="finding-kicker">
+          <span class="sev-pill sev-{{ cluster.severity }}">{{ cluster.severity|upper }}</span>
+          <span>{{ finding.repo }}</span>
+          <span>{{ cluster.issue_numbers|length }} issues</span>
+        </div>
+        <h3>{{ cluster.name }}</h3>
+        <p>{{ cluster.recurring_question }}</p>
+        <div class="marketplace-card-foot">
+          {% if cluster.published_url %}
+          <span class="paid-pill">Published</span>
+          {% else %}
+          <span class="preview-pill">Ready to publish</span>
+          {% endif %}
+          <a class="publish-btn" href="/runs/{{ finding.run_id }}/gaps/{{ finding.index }}">
+            View finding
+          </a>
+        </div>
+      </article>
+      {% endfor %}
+    </section>
+    {% else %}
+    <section class="placeholder">
+      <div class="placeholder-card">
+        <h2>No findings yet.</h2>
+        <p class="placeholder-hint">Run the agent against a repository to publish discovered doc gaps here.</p>
+        <a class="publish-btn" href="/">Run agent</a>
+      </div>
+    </section>
+    {% endif %}
+  </main>
+
+  {% include "_partials/built_with.html" %}
+</body>
+</html>

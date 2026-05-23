@@ -22,9 +22,11 @@ async def cluster_issues(issues: list[Issue]) -> list[GapCluster]:
     settings = get_settings()
     if settings.openai_api_key and len(issues) >= 2:
         try:
-            return await _cluster_with_llm(issues)
+            clusters = await _cluster_with_llm(issues)
+            if clusters:
+                return clusters
         except Exception:
-            return _cluster_heuristically(issues)
+            pass
     return _cluster_heuristically(issues)
 
 
@@ -95,7 +97,47 @@ def _cluster_heuristically(issues: list[Issue]) -> list[GapCluster]:
                 confidence=min(0.9, 0.45 + len(bucket) / 20),
             )
         )
+
+    if not clusters and issues:
+        support_candidates = _support_gap_candidates(issues)
+        if support_candidates:
+            issue_numbers = [issue.number for issue in support_candidates[:10]]
+            example_titles = "; ".join(issue.title for issue in support_candidates[:3])
+            severity = "high" if len(support_candidates) >= 5 else "medium"
+            clusters.append(
+                GapCluster(
+                    name="Support question documentation gap",
+                    summary=(
+                        f"{len(support_candidates)} recent issues look like recurring "
+                        f"support or usage questions: {example_titles}"
+                    ),
+                    recurring_question=(
+                        "Users need clearer troubleshooting and usage documentation for "
+                        "the recurring questions appearing in recent issues."
+                    ),
+                    issue_numbers=issue_numbers,
+                    severity=severity,
+                    confidence=min(0.8, 0.4 + len(support_candidates) / 25),
+                )
+            )
+
     return clusters[:8]
+
+
+def _support_gap_candidates(issues: list[Issue]) -> list[Issue]:
+    candidates: list[Issue] = []
+    for issue in issues:
+        text = f"{issue.title} {issue.body or ''}".lower()
+        labels = {label.lower() for label in issue.labels}
+        if (
+            "question" in labels
+            or "documentation" in labels
+            or "docs" in labels
+            or issue.comments_count >= 2
+            or re.search(r"\b(how|why|what|where|when|can i|is there)\b|\?", text)
+        ):
+            candidates.append(issue)
+    return candidates
 
 
 def attach_review_drafts(clusters: list[GapCluster], issues: list[Issue]) -> list[GapCluster]:
@@ -113,6 +155,7 @@ def attach_review_drafts(clusters: list[GapCluster], issues: list[Issue]) -> lis
         )
         if not issue_lines:
             issue_lines = "- No linked issues were available for this draft."
+        example_title = related[0].title if related else cluster.recurring_question
 
         cluster.draft_title = title
         cluster.draft_summary = (
@@ -121,20 +164,120 @@ def attach_review_drafts(clusters: list[GapCluster], issues: list[Issue]) -> lis
         )
         cluster.draft_markdown = f"""# {title}
 
-## What users are asking
+Resolve this `dd-trace-py` documentation gap with a task-oriented Datadog-style guide.
+
+> This page was generated from recurring GitHub issues and should be reviewed before it is linked from public support threads.
+
+## Overview
+
 {cluster.summary}
 
-Recurring question: {cluster.recurring_question}
+This page answers the recurring question: **{cluster.recurring_question}**
 
-## Recommended documentation update
-Add a focused docs section that answers the recurring question directly, explains the expected configuration or behavior, and links back to the relevant first-party documentation.
+## Getting started
+
+Before you begin, make sure you have:
+
+- A Python service instrumented with `dd-trace-py`.
+- A Datadog account with APM enabled.
+- A running Datadog Agent, or an agentless trace intake path configured for your environment.
+- Access to the service configuration where tracing environment variables or integration settings are defined.
+
+Install or update the Python tracing library:
+
+```shell
+pip install --upgrade ddtrace
+```
+
+If your service already uses `ddtrace`, confirm the installed version:
+
+```shell
+python -m pip show ddtrace
+```
+
+## Instrument your application
+
+Run the service with `ddtrace-run` so supported libraries are instrumented automatically:
+
+```shell
+ddtrace-run python app.py
+```
+
+For production services, set unified service tags before starting the process:
+
+```shell
+export DD_SERVICE=<SERVICE_NAME>
+export DD_ENV=<ENVIRONMENT>
+export DD_VERSION=<VERSION>
+
+ddtrace-run python app.py
+```
+
+## Configuration
+
+The Python SDK is commonly configured with environment variables. Start with these values and add integration-specific settings as needed:
+
+| Setting | Description |
+| --- | --- |
+| `DD_SERVICE` | Service name shown in Datadog APM. |
+| `DD_ENV` | Deployment environment, such as `dev`, `staging`, or `prod`. |
+| `DD_VERSION` | Application version for release correlation. |
+| `DD_AGENT_HOST` | Hostname for the Datadog Agent when it is not on `localhost`. |
+| `DD_TRACE_AGENT_URL` | Full trace intake URL. Takes precedence over host and port settings. |
+
+For the issue pattern behind this gap, document the exact setting, supported `ddtrace` version, and any framework-specific caveats.
+
+## Example
+
+1. Review the affected service and identify where `ddtrace` is configured.
+2. Confirm the Datadog Agent or agentless intake path is already working.
+3. Apply the configuration change described in this guide.
+4. Restart the service so the tracing configuration is loaded.
+
+```shell
+DD_SERVICE=<SERVICE_NAME> \\
+DD_ENV=prod \\
+DD_VERSION=1.0.0 \\
+DD_AGENT_HOST=<DATADOG_AGENT_HOST> \\
+ddtrace-run python app.py
+```
+
+## Validation
+
+Run the SDK diagnostic command:
+
+```shell
+ddtrace-run --info
+```
+
+Then validate the result in Datadog:
+
+- Generate traffic for the affected endpoint or background job.
+- Open **APM > Traces** in Datadog.
+- Confirm the trace, span metadata, and any expected request or response fields are present.
+- Compare the result against the issue example: "{example_title}".
+
+## Troubleshooting
+
+- If traces do not appear, confirm the Datadog Agent is reachable from the service.
+- If the Agent runs in a container, confirm APM non-local traffic is enabled and `DD_AGENT_HOST` points to the Agent container or host.
+- If configuration changes are ignored, verify that the service was restarted after updating environment variables.
+- If only some spans are missing metadata, check whether the integration supports that setting for the installed `dd-trace-py` version.
+- If `ddtrace-run --info` does not show the expected values, check whether configuration is being overridden in code or by deployment-level environment variables.
 
 ## Source GitHub issues
 {issue_lines}
 
-## Review notes
+## Further reading
+
+- [Datadog Python tracing documentation](https://ddtrace.readthedocs.io/)
+- [Datadog APM documentation](https://docs.datadoghq.com/tracing/)
+- [dd-trace-py GitHub repository](https://github.com/DataDog/dd-trace-py)
+
+## Review metadata
+
 - Severity: {cluster.severity}
 - Confidence: {cluster.confidence:.0%}
-- Generated by the Docs Gap Agent for human review before publishing.
+- Generated by Git Shell for human review before publishing.
 """
     return clusters

@@ -21,15 +21,13 @@
       <span>confidence {{ '%.0f'|format(cluster.confidence * 100) }}%</span>
       <span class="dot-sep">·</span>
       <span>{{ cluster.review_status|replace('_', ' ') }}</span>
+      <span class="dot-sep">·</span>
+      <span>ready to publish</span>
     </div>
     <div class="gap-actions" id="gap-{{ index }}-actions">
-      <button class="publish-btn"
-              hx-post="/runs/{{ run_id }}/gaps/{{ index }}/publish"
-              hx-target="#gap-{{ index }}-actions"
-              hx-swap="innerHTML"
-              hx-disabled-elt="this">
-        Approve + publish ▸ Senso
-      </button>
+      <a class="publish-btn" href="/runs/{{ run_id }}/gaps/{{ index }}">
+        View finding
+      </a>
       <button class="reject-btn"
               hx-post="/runs/{{ run_id }}/gaps/{{ index }}/reject"
               hx-target="#gap-{{ index }}-actions"

@@ -1,6 +1,7 @@
 from app import events
 from app.langgraph_agent import graph
 from app.state import RUNS, AgentState, GapCluster, Issue, RunRequest
+from app.tracing import traced_run
 
 
 async def run_agent(request: RunRequest, state: AgentState | None = None) -> AgentState:
@@ -13,32 +14,33 @@ async def run_agent(request: RunRequest, state: AgentState | None = None) -> Age
     )
 
     try:
-        result = await graph.ainvoke(
-            {
-                "run_id": state.run_id,
-                "repo": request.repo,
-                "docs_url": request.docs_url,
-                "limit": request.limit,
-                "dry_run": request.dry_run,
-                "issues": [],
-                "clusters": [],
-                "docs_sources": [],
-                "errors": [],
-                "decisions": [],
-                "researched": False,
-                "analyzed": False,
-                "docs_searched": False,
-                "stored": False,
-            },
-            config={
-                "metadata": {
+        with traced_run(state.run_id, request.repo):
+            result = await graph.ainvoke(
+                {
                     "run_id": state.run_id,
                     "repo": request.repo,
+                    "docs_url": request.docs_url,
+                    "limit": request.limit,
                     "dry_run": request.dry_run,
+                    "issues": [],
+                    "clusters": [],
+                    "docs_sources": [],
+                    "errors": [],
+                    "decisions": [],
+                    "researched": False,
+                    "analyzed": False,
+                    "docs_searched": False,
+                    "stored": False,
                 },
-                "tags": ["docs-gap-agent", request.repo],
-            },
-        )
+                config={
+                    "metadata": {
+                        "run_id": state.run_id,
+                        "repo": request.repo,
+                        "dry_run": request.dry_run,
+                    },
+                    "tags": ["docs-gap-agent", request.repo],
+                },
+            )
     except Exception as exc:
         state.errors.append(str(exc))
         state.status = "failed"

@@ -43,6 +43,9 @@ class GapCluster(BaseModel):
     senso_content_id: str | None = None
     senso_version_id: str | None = None
     published_url: str | None = None
+    payment_status: Literal["unpaid", "paid"] = "unpaid"
+    payment_amount_cents: int | None = None
+    payment_id: str | None = None
 
 
 class DocSource(BaseModel):

@@ -9,7 +9,16 @@ python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
-uvicorn app.main:app --reload
+# Set DD_API_KEY and other keys in .env, then:
+chmod +x run.sh
+./run.sh
+```
+
+Or run manually (loads the same Datadog LLM Observability settings from `.env`):
+
+```bash
+set -a && source .env && set +a
+ddtrace-run uvicorn app.main:app --reload
 ```
 
 Start a dry-run agent run:
@@ -80,5 +89,7 @@ GITHUB_NOTIFY_TOKEN=...  # next phase: issue comments
 LANGSMITH_API_KEY=...    # LangGraph Studio traces
 ```
 
-Datadog tracing is optional at runtime. Install `ddtrace` in a supported Python version
-and set standard `DD_*` environment variables to emit tool spans.
+Datadog APM and LLM Observability run through `ddtrace-run`. Set `DD_API_KEY`,
+`DD_SITE`, `DD_LLMOBS_ENABLED=1`, and `DD_LLMOBS_ML_APP` in `.env`, then start
+with `./run.sh`. Traces appear under **APM > Traces**; LLM spans under
+**LLM Observability** for the `gitshell` ML app.

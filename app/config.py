@@ -8,6 +8,13 @@ class Settings(BaseSettings):
 
     app_env: str = "development"
     dev_payment_bypass: bool = True
+    app_base_url: str = "http://localhost:8000"
+
+    stripe_secret_key: str | None = None
+    stripe_currency: str = "usd"
+    stripe_low_severity_cents: int = 50
+    stripe_medium_severity_cents: int = 50
+    stripe_high_severity_cents: int = 50
 
     github_token: str | None = None
     github_notify_token: str | None = None
@@ -23,6 +30,8 @@ class Settings(BaseSettings):
     clickhouse_secure: bool = True
 
     senso_api_key: str | None = None
+    senso_content_type_id: str | None = None
+    senso_publish_destination: str = "cited-md"
     nimble_api_key: str | None = None
 
     langsmith_tracing: bool = True
